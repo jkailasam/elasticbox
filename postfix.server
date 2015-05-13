@@ -1,14 +1,31 @@
+#!/bin/bash
+
 #### setup some variables####
+TMPFILE=/tmp/tmpfile
+curl http://169.254.169.254/latest/dynamic/instance-identity/document > $TMPFILE
+ACCTID=$(awk -F\" '/accountId/ {print $4}' $TMPFILE)
 INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
 IPADDR=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
 AZ=$(curl http://169.254.169.254/latest/meta-data/placement/availability-zone/)
 HOSTNAME=mr-${AZ}-${INSTANCE_ID}
-echo "$IPADDR ${HOSTNAME}.itp.netflix.com $HOSTNAME" >> /etc/hosts
+
+### findout  domain
+case $ACCTID in
+        788777746278) DOMAIN=itp;
+                      SALTY="" ;;
+        020769165682) DOMAIN=itd;
+                      SALTY="" ;;
+        *) echo "Invalid Account";;
+esac
+
+## Set the hostname
+echo "$IPADDR ${HOSTNAME}.${DOMAIN}.netflix.com $HOSTNAME" >> /etc/hosts
 hostname $HOSTNAME
 
+
+## configure postfix server
 touch /etc/postfix/generic
 chmod 644 /etc/postfix/generic
-
 #postconf -e smtpd_banner="\\$myhostname ESMTP \\$mail_name (Ubuntu)"
 postconf -e smtpd_banner="\$myhostname ESMTP \$mail_name (Ubuntu)"
 postconf -e biff="no"
@@ -39,3 +56,8 @@ postmap /etc/postfix/generic
 
 ### restart the service###
 service postfix restart
+
+
+### send test email
+echo "$HOSTNAME - configured as mail server successfully" > /tmp/mail.send
+mailx -s "test email from new mail server"  etech@netflix.com < /tmp/mail.send

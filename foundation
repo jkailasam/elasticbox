@@ -4,7 +4,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y python-software-properties nfs-common netcat-openbsd mutt
 apt-get -y -f install
-apt-get -y install postfix mailutils
+apt-get -y install postfix mailutils ntp
 
 ### Setup timezone
 
@@ -105,48 +105,36 @@ echo "umask 077" >> /root/.profile
 echo "umask 077" >> /home/ubuntu/.profile 
 
 
- if [[ -d "/etc/network/interfaces.d" ]]; then
+if [[ -d "/etc/network/interfaces.d" ]]; then
   echo "dns-search itp.netflix.com itd.netflix.com its.netflix.com netflix.com eng.netflix.com prod.netflix.com" >> /etc/network/interfaces.d/eth0.cfg
-   else
-   echo "dns-search itp.netflix.com itd.netflix.com its.netflix.com netflix.com eng.netflix.com prod.netflix.com" >> /etc/network/interfaces
-  fi
-
-
-
-
+    else
+    echo "dns-search itp.netflix.com itd.netflix.com its.netflix.com netflix.com eng.netflix.com prod.netflix.com" >> /etc/network/interfaces
+fi
 
 #### Install cloud passage ###
-  echo 'deb http://packages.cloudpassage.com/debian debian main' | tee /etc/apt/sources.list.d/cloudpassage.list > /dev/null
+echo 'deb http://packages.cloudpassage.com/debian debian main' | tee /etc/apt/sources.list.d/cloudpassage.list > /dev/null
 
-  # import CloudPassage public key
-  curl http://packages.cloudpassage.com/cloudpassage.packages.key | apt-key add -
+# import CloudPassage public key
+curl http://packages.cloudpassage.com/cloudpassage.packages.key | apt-key add -
 
-  # install the daemon, but do not start it
-  dpkg --configure -a
-  apt-get update
-  echo -e '#!/bin/sh\nexit 101' | install -m 755 /dev/stdin /usr/sbin/policy-rc.d && apt-get -y install cphalo && rm -f /usr/sbin/policy-rc.d
-  dpkg --configure -a
+# install the daemon, but do not start it
+dpkg --configure -a
+apt-get update
+echo -e '#!/bin/sh\nexit 101' | install -m 755 /dev/stdin /usr/sbin/policy-rc.d && apt-get -y install cphalo && rm -f /usr/sbin/policy-rc.d
+dpkg --configure -a
   
-  # start the daemon for the first time
-    x=1
-     while [ $x -le 5 ]
-      do
-       ([[ -f /opt/cloudpassage/data/halo.pid ]]) && break
-       if [[ "$HOSTNAME" =~ bastion ]]; then
+# start the daemon for the first time
+while true
+     do
+     ([[ -f /opt/cloudpassage/data/halo.pid ]]) && break
+     if [[ "$HOSTNAME" =~ bastion ]]; then
          /etc/init.d/cphalod start --daemon-key=155794252cf3f225dc2e36c4236b03e1 --tag=bastion
-       else 
+     else 
          /etc/init.d/cphalod start --daemon-key=155794252cf3f225dc2e36c4236b03e1
-       fi
-       # echo -e '/etc/init.d/cphalod start --daemon-key=155794252cf3f225dc2e36c4236b03e1' | tee /tmp/cpassage.sh > /dev/null
-       # chmod 755 /tmp/cpassage.sh
-       # /tmp/cpassage.sh
-       # rm /tmp/cpassage.sh
-       x=$(( $x + 1 ))
-      done
+     fi
+     sleep 2
+done
       
-# install salt minion, but do not start it
-# echo -e '#!/bin/sh\nexit 101' | install -m 755 /dev/stdin /usr/sbin/policy-rc.d && apt-get -y install salt-minion && rm -f /usr/sbin/policy-rc.d
-
 # dpkg gets wacky at this point
 dpkg --configure -a
 apt-get -y -f install
